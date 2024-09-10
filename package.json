@@ -1,0 +1,14 @@
+{
+  "name": "reimbursement-bot",
+  "description": "typescript application running on aws fargate exposing an api to the internet",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "dependencies": {
+    "@pulumi/pulumi": "*",
+    "@pulumi/awsx": "2.10.0",
+    "@pulumi/aws": "6.13.3"
+  }
+}

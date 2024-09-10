@@ -1,0 +1,10 @@
+name: reimbursement-bot
+runtime:
+  name: nodejs
+  options:
+    packagemanager: pnpm
+description: typescript application running on aws fargate exposing an api to the internet
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: https://www.pulumi.com/ai/api/project/39baeac9-b30f-4309-b9f2-17b51cf3a769.zip
