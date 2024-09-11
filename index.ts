@@ -57,5 +57,61 @@ const service = new awsx.ecs.FargateService('service', {
   },
 });
 
-// The url at which the container's HTTPS API is exposed
-export const url = pulumi.interpolate`http://${loadBalancer.loadBalancer.dnsName}`;
+// Create a CloudFront distribution
+const distribution = new aws.cloudfront.Distribution('distribution', {
+  enabled: true,
+  httpVersion: 'http2',
+  defaultCacheBehavior: {
+    targetOriginId: loadBalancer.loadBalancer.arn,
+    viewerProtocolPolicy: 'redirect-to-https',
+    allowedMethods: [
+      'GET',
+      'HEAD',
+      'OPTIONS',
+      'PUT',
+      'POST',
+      'PATCH',
+      'DELETE',
+    ],
+    cachedMethods: ['GET', 'HEAD', 'OPTIONS'],
+    forwardedValues: {
+      queryString: true,
+      headers: [
+        'Origin',
+        'Access-Control-Request-Headers',
+        'Access-Control-Request-Method',
+      ],
+      cookies: {
+        forward: 'all',
+      },
+    },
+    minTtl: 0,
+    defaultTtl: 0,
+    maxTtl: 0,
+    compress: true,
+  },
+  origins: [
+    {
+      originId: loadBalancer.loadBalancer.arn,
+      domainName: loadBalancer.loadBalancer.dnsName,
+      customOriginConfig: {
+        httpPort: 80,
+        httpsPort: 443,
+        originProtocolPolicy: 'http-only',
+        originSslProtocols: ['TLSv1.2'],
+      },
+    },
+  ],
+  priceClass: 'PriceClass_100',
+  restrictions: {
+    geoRestriction: {
+      restrictionType: 'none',
+    },
+  },
+  viewerCertificate: {
+    cloudfrontDefaultCertificate: true,
+  },
+});
+
+// Export the HTTPS URL of the CloudFront distribution
+export const url = pulumi.interpolate`https://${distribution.domainName}`;
