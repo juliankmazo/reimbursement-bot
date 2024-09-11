@@ -8,6 +8,10 @@ const containerPort = config.getNumber('containerPort') || 80;
 const cpu = config.getNumber('cpu') || 512;
 const memory = config.getNumber('memory') || 1024;
 
+// Get Twilio credentials from Pulumi config
+const twilioAccountSid = config.requireSecret('TWILIO_ACCOUNT_SID');
+const twilioAuthToken = config.requireSecret('TWILIO_AUTH_TOKEN');
+
 // An ECS cluster to deploy into
 const cluster = new aws.ecs.Cluster('cluster', {
   name: 'reimbursement-bot-cluster',
@@ -52,6 +56,10 @@ const service = new awsx.ecs.FargateService('service', {
           hostPort: containerPort,
           targetGroup: loadBalancer.defaultTargetGroup,
         },
+      ],
+      environment: [
+        { name: 'TWILIO_ACCOUNT_SID', value: twilioAccountSid },
+        { name: 'TWILIO_AUTH_TOKEN', value: twilioAuthToken },
       ],
     },
   },
