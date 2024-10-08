@@ -56,9 +56,9 @@ app.post('/webhook', async (req, res) => {
                 {
                   type: 'text',
                   text: `Please analyze the attached invoice image and extract the following details in a structured format:
-1. The exact date of the transaction (including any formatting as shown on the invoice).
+1. The exact date of the transaction in the format of DD-MM-YYYY.
 2. The total amount of the transaction, including any tip or additional charges.
-3. A brief description of the transaction, including any information about the vendor, items, or services provided.`,
+3. A one line description of the invoice`,
                 },
                 {
                   type: 'image_url',
