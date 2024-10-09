@@ -122,22 +122,22 @@ export const url = pulumi.interpolate`https://${distribution.domainName}`;
 
 // After creating the distribution, set the Telegram webhook
 
-distribution.urn.apply(async () => {
-  try {
-    const telegramWebhookUrl = `${url}/telegram-webhook`;
+pulumi
+  .all([distribution.domainName, TELEGRAM_BOT_TOKEN])
+  .apply(([domainName, botToken]) => {
+    const telegramWebhookUrl = `https://${domainName}/webhook`;
 
-    const response = await axios.post(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook`,
-      {
+    axios
+      .post(`https://api.telegram.org/bot${botToken}/setWebhook`, {
         url: telegramWebhookUrl,
-      }
-    );
-    console.log('Telegram webhook set successfully:', response.data);
-  } catch (error) {
-    console.error(
-      'Error setting Telegram webhook:',
-      // @ts-ignore
-      error?.response ? error.response.data : error.message
-    );
-  }
-});
+      })
+      .then((response) => {
+        console.log('Telegram webhook set successfully:', response.data);
+      })
+      .catch((error) => {
+        console.error(
+          'Error setting Telegram webhook:',
+          error.response ? error.response.data : error.message
+        );
+      });
+  });
