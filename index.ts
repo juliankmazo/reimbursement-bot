@@ -9,8 +9,9 @@ const cpu = config.getNumber('cpu') || 512;
 const memory = config.getNumber('memory') || 1024;
 
 // Get Twilio credentials from Pulumi config
-const twilioAccountSid = config.requireSecret('TWILIO_ACCOUNT_SID');
-const twilioAuthToken = config.requireSecret('TWILIO_AUTH_TOKEN');
+const TWILIO_ACCOUNT_SID = config.requireSecret('TWILIO_ACCOUNT_SID');
+const TWILIO_AUTH_TOKEN = config.requireSecret('TWILIO_AUTH_TOKEN');
+const OPENAI_API_KEY = config.requireSecret('OPENAI_API_KEY');
 
 // An ECS cluster to deploy into
 const cluster = new aws.ecs.Cluster('cluster', {
@@ -58,8 +59,9 @@ const service = new awsx.ecs.FargateService('service', {
         },
       ],
       environment: [
-        { name: 'TWILIO_ACCOUNT_SID', value: twilioAccountSid },
-        { name: 'TWILIO_AUTH_TOKEN', value: twilioAuthToken },
+        { name: 'TWILIO_ACCOUNT_SID', value: TWILIO_ACCOUNT_SID },
+        { name: 'TWILIO_AUTH_TOKEN', value: TWILIO_AUTH_TOKEN },
+        { name: 'OPENAI_API_KEY', value: OPENAI_API_KEY },
       ],
     },
   },
@@ -93,9 +95,6 @@ const distribution = new aws.cloudfront.Distribution('distribution', {
         forward: 'all',
       },
     },
-    minTtl: 0,
-    defaultTtl: 0,
-    maxTtl: 0,
     compress: true,
   },
   origins: [
