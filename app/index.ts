@@ -8,33 +8,39 @@ const port = process.env.PORT || 80;
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
-type ITwilioWebhookSchema = {
-  Body: string;
-  From: string;
-  To: string;
-  MessageSid: string;
-  NumMedia: string;
-  MediaUrl0?: string;
-  MediaContentType0?: string;
+type ITelegramWebhookSchema = {
+  message: {
+    chat: {
+      id: number;
+    };
+    text?: string;
+    photo?: Array<{ file_id: string }>;
+  };
 };
 
-app.post('/webhook', async (req, res) => {
-  const payload = req.body as ITwilioWebhookSchema;
+app.post(`/telegram-webhook`, async (req, res) => {
+  const payload = req.body as ITelegramWebhookSchema;
 
   try {
     // Check if there is an attached image
-    if (parseInt(payload.NumMedia) > 0 && payload.MediaUrl0) {
+    if (payload.message.photo && payload.message.photo.length > 0) {
       console.log('Media detected, attempting to extract...');
 
-      // Fetch image from Twilio's MediaUrl
-      const mediaResponse = await axios.get(payload.MediaUrl0, {
-        responseType: 'arraybuffer',
-      });
+      // Fetch the file from Telegram
+      const fileId =
+        payload.message.photo[payload.message.photo.length - 1].file_id;
+      const fileResponse = await axios.get(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getFile?file_id=${fileId}`
+      );
+      const filePath = fileResponse.data.result.file_path;
+      const mediaResponse = await axios.get(
+        `https://api.telegram.org/file/bot${TELEGRAM_BOT_TOKEN}/${filePath}`,
+        {
+          responseType: 'arraybuffer',
+        }
+      );
 
       // Encode the image in base64
       const base64Image = Buffer.from(mediaResponse.data).toString('base64');
@@ -56,9 +62,9 @@ app.post('/webhook', async (req, res) => {
                 {
                   type: 'text',
                   text: `Please analyze the attached invoice image and extract the following details in a structured format:
-1. The exact date of the transaction in the format of YYYY-DD-MM.
-2. The total amount of the transaction, including any tip or additional charges formatted as money with commas as the thousands separator and dots for decimals.
-3. A one line description of the invoice`,
+      1. The exact date of the transaction in the format of YYYY-MM-DD.
+      2. The final amount of the transaction, including any tip or additional charges formatted as money with commas as the thousands separator and dots for decimals. Make sure is the total. The total is normally the highest amount in the invoice.
+      3. A one line description of the invoice. Ideally include the name of the establishment and the type of expense: eg dinner at mcdonalds, drinks at irish pub`,
                 },
                 {
                   type: 'image_url',
@@ -81,22 +87,26 @@ app.post('/webhook', async (req, res) => {
 
       const fieldsResponse = openAIResponse.data.choices[0].message.content;
 
-      const response = await twilioClient.messages.create({
-        body: `Invoice fields extracted:\n${fieldsResponse}`,
-        from: payload.To,
-        to: payload.From,
-      });
+      const response = await axios.post(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+        {
+          chat_id: payload.message.chat.id,
+          text: `Invoice fields extracted:\n${fieldsResponse}`,
+        }
+      );
 
       console.log(response);
 
       res.json({ message: 'Message received and processed' });
     } else {
       // If there's no image or text extracted
-      const response = await twilioClient.messages.create({
-        body: `Message received. I'm the 🐴: ${payload.Body}`,
-        from: payload.To,
-        to: payload.From,
-      });
+      const response = await axios.post(
+        `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+        {
+          chat_id: payload.message.chat.id,
+          text: `Message received. I'm the 🐴: ${payload.message.text}`,
+        }
+      );
 
       console.log(response);
 

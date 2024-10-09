@@ -5,10 +5,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "@juliankmazo",
   "dependencies": {
     "@pulumi/aws": "6.13.3",
     "@pulumi/awsx": "2.10.0",
-    "@pulumi/pulumi": "*"
+    "@pulumi/pulumi": "*",
+    "axios": "^1.7.7"
   }
 }
