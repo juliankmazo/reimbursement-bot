@@ -1,17 +1,15 @@
 import * as pulumi from '@pulumi/pulumi';
 import * as awsx from '@pulumi/awsx';
 import * as aws from '@pulumi/aws';
-import * as acm from '@pulumi/aws/acm';
+import axios from 'axios';
 
 const config = new pulumi.Config();
 const containerPort = config.getNumber('containerPort') || 80;
 const cpu = config.getNumber('cpu') || 512;
 const memory = config.getNumber('memory') || 1024;
 
-// Get Twilio credentials from Pulumi config
-const TWILIO_ACCOUNT_SID = config.requireSecret('TWILIO_ACCOUNT_SID');
-const TWILIO_AUTH_TOKEN = config.requireSecret('TWILIO_AUTH_TOKEN');
 const OPENAI_API_KEY = config.requireSecret('OPENAI_API_KEY');
+const TELEGRAM_BOT_TOKEN = config.requireSecret('TELEGRAM_BOT_TOKEN');
 
 // An ECS cluster to deploy into
 const cluster = new aws.ecs.Cluster('cluster', {
@@ -59,9 +57,8 @@ const service = new awsx.ecs.FargateService('service', {
         },
       ],
       environment: [
-        { name: 'TWILIO_ACCOUNT_SID', value: TWILIO_ACCOUNT_SID },
-        { name: 'TWILIO_AUTH_TOKEN', value: TWILIO_AUTH_TOKEN },
         { name: 'OPENAI_API_KEY', value: OPENAI_API_KEY },
+        { name: 'TELEGRAM_BOT_TOKEN', value: TELEGRAM_BOT_TOKEN },
       ],
     },
   },
@@ -122,3 +119,25 @@ const distribution = new aws.cloudfront.Distribution('distribution', {
 
 // Export the HTTPS URL of the CloudFront distribution
 export const url = pulumi.interpolate`https://${distribution.domainName}`;
+
+// After creating the distribution, set the Telegram webhook
+
+pulumi
+  .all([distribution.domainName, TELEGRAM_BOT_TOKEN])
+  .apply(([domainName, botToken]) => {
+    const telegramWebhookUrl = `https://${domainName}/webhook`;
+
+    axios
+      .post(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        url: telegramWebhookUrl,
+      })
+      .then((response) => {
+        console.log('Telegram webhook set successfully:', response.data);
+      })
+      .catch((error) => {
+        console.error(
+          'Error setting Telegram webhook:',
+          error.response ? error.response.data : error.message
+        );
+      });
+  });
