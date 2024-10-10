@@ -90,10 +90,11 @@ const db = new aws.rds.Cluster('diabloReimbursementBotServerlessPostgres', {
   masterUsername: DB_USERNAME,
   masterPassword: DB_PASSWORD,
   dbSubnetGroupName: dbSubnetGroup.name,
+  deletionProtection: true,
   vpcSecurityGroupIds: [dbSecurityGroup.id],
   scalingConfiguration: {
     autoPause: true,
-    // minCapacity: 1,
+    minCapacity: 2,
     maxCapacity: 2,
     secondsUntilAutoPause: 300,
   },
