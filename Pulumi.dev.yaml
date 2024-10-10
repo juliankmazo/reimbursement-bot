@@ -1,2 +1,6 @@
 config:
   aws:region: us-east-1
+  reimbursement-bot:OPENAI_API_KEY:
+    secure: AAABAMemaEfakyVPEQcSYyUDwDsbbnmoarMlSk4pOgPwpHotvgAJIrBq4xI86uHRubupLPRNJuVeaCoPCOycW9k/TKGnxZBHgmgZBPjWxFpZLRM=
+  reimbursement-bot:TELEGRAM_BOT_TOKEN:
+    secure: AAABALEQ+GwpLw39Q0G9UrEeil8HnwKdPj8BS1yhTvePrrZET0J3q8CMWiSQz8LahLnrkiSkjywSAIf+gaJAIN8TnsY00vy2kT+C9LVe

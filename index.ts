@@ -10,21 +10,28 @@ const memory = config.getNumber('memory') || 1024;
 
 const OPENAI_API_KEY = config.requireSecret('OPENAI_API_KEY');
 const TELEGRAM_BOT_TOKEN = config.requireSecret('TELEGRAM_BOT_TOKEN');
+const DB_PASSWORD = config.requireSecret('DB_PASSWORD');
+const DB_USERNAME = config.requireSecret('DB_USERNAME');
+
+const TAGS = { Name: 'diablo-experiments' };
 
 // An ECS cluster to deploy into
 const cluster = new aws.ecs.Cluster('cluster', {
   name: 'reimbursement-bot-cluster',
+  tags: TAGS,
 });
 
 // An Application Load Balancer to server the container endpoint to the internet
 const loadBalancer = new awsx.lb.ApplicationLoadBalancer('loadBalancer', {
   name: 'reimbursement-bot-load-balancer',
+  tags: TAGS,
 });
 
 // An ECR repository to store the container image
 const repository = new awsx.ecr.Repository('repository', {
   name: 'reimbursement-bot-repository',
   forceDelete: true,
+  tags: TAGS,
 });
 
 // Build and publish our application's container image from ./app to the ECR repository
@@ -35,6 +42,38 @@ const image = new awsx.ecr.Image('image', {
   context: './app',
   dockerfile: './app/Dockerfile',
   platform: 'linux/amd64',
+});
+
+// Create a new VPC to get subnet IDs
+const vpc = new awsx.ec2.Vpc('diabloReimbursementBotVpc', {
+  cidrBlock: '10.0.0.0/16',
+  tags: TAGS,
+});
+
+// Create a serverless PostgreSQL RDS instace
+const dbSubnetGroup = new aws.rds.SubnetGroup(
+  'diabloReimbursementBotDbSubnetGroup',
+  {
+    subnetIds: vpc.privateSubnetIds,
+    tags: TAGS,
+  }
+);
+
+const db = new aws.rds.Cluster('diabloReimbursementBotServerlessPostgres', {
+  engine: 'aurora-postgresql',
+  engineMode: 'serverless',
+  databaseName: 'reimbursement_bot',
+  masterUsername: '',
+  masterPassword: '',
+  dbSubnetGroupName: dbSubnetGroup.name,
+  scalingConfiguration: {
+    autoPause: true,
+    minCapacity: 1,
+    maxCapacity: 1,
+    secondsUntilAutoPause: 300,
+  },
+  skipFinalSnapshot: false,
+  tags: TAGS,
 });
 
 // Deploy an ECS service on Fargate to host the application container
@@ -59,9 +98,14 @@ const service = new awsx.ecs.FargateService('service', {
       environment: [
         { name: 'OPENAI_API_KEY', value: OPENAI_API_KEY },
         { name: 'TELEGRAM_BOT_TOKEN', value: TELEGRAM_BOT_TOKEN },
+        {
+          name: 'DATABASE_URL',
+          value: pulumi.interpolate`postgresql://${DB_USERNAME}:${DB_PASSWORD}@${db.endpoint}:5432/${db.databaseName}`,
+        },
       ],
     },
   },
+  tags: TAGS,
 });
 
 // Create a CloudFront distribution
@@ -115,6 +159,7 @@ const distribution = new aws.cloudfront.Distribution('distribution', {
   viewerCertificate: {
     cloudfrontDefaultCertificate: true,
   },
+  tags: TAGS,
 });
 
 // Export the HTTPS URL of the CloudFront distribution
