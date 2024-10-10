@@ -52,7 +52,7 @@ const vpc = new awsx.ec2.Vpc('diabloReimbursementBotVpc', {
 
 // Create a serverless PostgreSQL RDS instace
 const dbSubnetGroup = new aws.rds.SubnetGroup(
-  'diabloReimbursementBotDbSubnetGroup',
+  'diablo_reimbursement_bot_db_subnet_group',
   {
     subnetIds: vpc.privateSubnetIds,
     tags: TAGS,
@@ -93,8 +93,8 @@ const db = new aws.rds.Cluster('diabloReimbursementBotServerlessPostgres', {
   vpcSecurityGroupIds: [dbSecurityGroup.id],
   scalingConfiguration: {
     autoPause: true,
-    minCapacity: 1,
-    maxCapacity: 1,
+    // minCapacity: 1,
+    maxCapacity: 2,
     secondsUntilAutoPause: 300,
   },
   skipFinalSnapshot: false,
