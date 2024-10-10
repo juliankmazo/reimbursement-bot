@@ -84,6 +84,7 @@ const dbSecurityGroup = new aws.ec2.SecurityGroup(
 );
 
 const db = new aws.rds.Cluster('diabloReimbursementBotServerlessPostgres', {
+  clusterIdentifier: 'diablo-reimbursement-bot',
   engine: 'aurora-postgresql',
   engineMode: 'serverless',
   databaseName: 'reimbursement',
@@ -103,39 +104,36 @@ const db = new aws.rds.Cluster('diabloReimbursementBotServerlessPostgres', {
 });
 
 // Deploy an ECS service on Fargate to host the application container
-const service = new awsx.ecs.FargateService(
-  'diabloReimbursementBotFargateService',
-  {
-    name: 'reimbursement-bot-fargate-service',
-    cluster: cluster.arn,
-    assignPublicIp: true,
-    taskDefinitionArgs: {
-      container: {
-        name: 'reimbursement-bot',
-        image: image.imageUri,
-        cpu,
-        memory,
-        essential: true,
-        portMappings: [
-          {
-            containerPort,
-            hostPort: containerPort,
-            targetGroup: loadBalancer.defaultTargetGroup,
-          },
-        ],
-        environment: [
-          { name: 'OPENAI_API_KEY', value: OPENAI_API_KEY },
-          { name: 'TELEGRAM_BOT_TOKEN', value: TELEGRAM_BOT_TOKEN },
-          {
-            name: 'DATABASE_URL',
-            value: pulumi.interpolate`postgresql://${DB_USERNAME}:${DB_PASSWORD}@${db.endpoint}:${db.port}/${db.databaseName}`,
-          },
-        ],
-      },
+const service = new awsx.ecs.FargateService('service', {
+  name: 'reimbursement-bot-fargate-service',
+  cluster: cluster.arn,
+  assignPublicIp: true,
+  taskDefinitionArgs: {
+    container: {
+      name: 'reimbursement-bot',
+      image: image.imageUri,
+      cpu,
+      memory,
+      essential: true,
+      portMappings: [
+        {
+          containerPort,
+          hostPort: containerPort,
+          targetGroup: loadBalancer.defaultTargetGroup,
+        },
+      ],
+      environment: [
+        { name: 'OPENAI_API_KEY', value: OPENAI_API_KEY },
+        { name: 'TELEGRAM_BOT_TOKEN', value: TELEGRAM_BOT_TOKEN },
+        {
+          name: 'DATABASE_URL',
+          value: pulumi.interpolate`postgresql://${DB_USERNAME}:${DB_PASSWORD}@${db.endpoint}:${db.port}/${db.databaseName}`,
+        },
+      ],
     },
-    tags: TAGS,
-  }
-);
+  },
+  tags: TAGS,
+});
 
 // Create a CloudFront distribution
 const distribution = new aws.cloudfront.Distribution(
