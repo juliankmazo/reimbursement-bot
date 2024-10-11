@@ -91,7 +91,7 @@ const db = new aws.rds.Cluster('diabloReimbursementBotServerlessPostgres', {
   masterUsername: DB_USERNAME,
   masterPassword: DB_PASSWORD,
   dbSubnetGroupName: dbSubnetGroup.name,
-  deletionProtection: true,
+  deletionProtection: false,
   vpcSecurityGroupIds: [dbSecurityGroup.id],
   scalingConfiguration: {
     autoPause: true,
@@ -99,7 +99,8 @@ const db = new aws.rds.Cluster('diabloReimbursementBotServerlessPostgres', {
     maxCapacity: 2,
     secondsUntilAutoPause: 300,
   },
-  skipFinalSnapshot: false,
+  skipFinalSnapshot: true,
+  // finalSnapshotIdentifier: 'tf-20241010041538437700000001',
   tags: TAGS,
 });
 
