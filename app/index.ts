@@ -35,12 +35,14 @@ const extractInvoiceFieldsFromImage = async ({
               {
                 "transactionDate": "YYYY-MM-DD",
                 "amount": 1234.56,
+                "currency": "USD",
                 "description": "Dinner at McDonald's"
               }
               \`\`\`
       where
       \`transactionDate\`: is the exact date of the transaction in the format of YYYY-MM-DD.
-      \`amount\`: is the final amount of the transaction, including any tip or additional charges formatted as money with commas as the thousands separator and dots for decimals. Make sure is the total. The total is normally the highest amount in the invoice.
+      \`amount\`: is the final amount of the transaction, including any tip or additional charges. Make sure is the total. The total is normally the highest amount in the invoice.
+      \`currency\`: is the currency of the transaction. It can be USD or COP
       \`description\`: is a one line description of the invoice. Ideally include the name of the establishment and the type of expense: eg dinner at mcdonalds, drinks at irish pub`,
             },
             {
