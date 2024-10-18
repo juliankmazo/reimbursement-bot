@@ -50,59 +50,59 @@ const vpc = new awsx.ec2.Vpc('diabloReimbursementBotVpc', {
   tags: TAGS,
 });
 
-// // Create a serverless PostgreSQL RDS instace
-// const dbSubnetGroup = new aws.rds.SubnetGroup(
-//   'diablo_reimbursement_bot_db_subnet_group',
-//   {
-//     subnetIds: vpc.privateSubnetIds,
-//     tags: TAGS,
-//   }
-// );
+// Create a serverless PostgreSQL RDS instace
+const dbSubnetGroup = new aws.rds.SubnetGroup(
+  'diablo_reimbursement_bot_db_subnet_group',
+  {
+    subnetIds: vpc.privateSubnetIds,
+    tags: TAGS,
+  }
+);
 
-// const dbSecurityGroup = new aws.ec2.SecurityGroup(
-//   'diabloReimbursementBotDbSecurityGroup',
-//   {
-//     vpcId: vpc.vpcId,
-//     ingress: [
-//       {
-//         protocol: 'tcp',
-//         fromPort: 5432,
-//         toPort: 5432,
-//         cidrBlocks: ['0.0.0.0/0'], // Allow inbound traffic from any IP address 😅
-//       },
-//     ],
-//     egress: [
-//       {
-//         protocol: '-1',
-//         fromPort: 0,
-//         toPort: 0,
-//         cidrBlocks: ['0.0.0.0/0'],
-//       },
-//     ],
-//     tags: TAGS,
-//   }
-// );
+const dbSecurityGroup = new aws.ec2.SecurityGroup(
+  'diabloReimbursementBotDbSecurityGroup',
+  {
+    vpcId: vpc.vpcId,
+    ingress: [
+      {
+        protocol: 'tcp',
+        fromPort: 5432,
+        toPort: 5432,
+        cidrBlocks: ['0.0.0.0/0'], // Allow inbound traffic from any IP address 😅
+      },
+    ],
+    egress: [
+      {
+        protocol: '-1',
+        fromPort: 0,
+        toPort: 0,
+        cidrBlocks: ['0.0.0.0/0'],
+      },
+    ],
+    tags: TAGS,
+  }
+);
 
-// const db = new aws.rds.Cluster('diabloReimbursementBotServerlessPostgres', {
-//   clusterIdentifier: 'diablo-reimbursement-bot',
-//   engine: 'aurora-postgresql',
-//   engineMode: 'serverless',
-//   databaseName: 'reimbursement',
-//   masterUsername: DB_USERNAME,
-//   masterPassword: DB_PASSWORD,
-//   dbSubnetGroupName: dbSubnetGroup.name,
-//   deletionProtection: false,
-//   vpcSecurityGroupIds: [dbSecurityGroup.id],
-//   scalingConfiguration: {
-//     autoPause: true,
-//     minCapacity: 2,
-//     maxCapacity: 2,
-//     secondsUntilAutoPause: 300,
-//   },
-//   skipFinalSnapshot: true,
-//   // finalSnapshotIdentifier: 'tf-20241010041538437700000001',
-//   tags: TAGS,
-// });
+const db = new aws.rds.Cluster('diabloReimbursementBotServerlessPostgres', {
+  clusterIdentifier: 'diablo-reimbursement-bot', // Inmutable
+  engine: 'aurora-postgresql', // Inmutable
+  engineMode: 'serverless', // Inmutable
+  databaseName: 'reimbursement', // Inmutable
+  masterUsername: DB_USERNAME, // Inmutable
+  masterPassword: DB_PASSWORD, // Inmutable
+  dbSubnetGroupName: dbSubnetGroup.name,
+  deletionProtection: true, // Inmutable
+  vpcSecurityGroupIds: [dbSecurityGroup.id],
+  scalingConfiguration: {
+    autoPause: true,
+    minCapacity: 2,
+    maxCapacity: 2,
+    secondsUntilAutoPause: 300,
+  },
+  skipFinalSnapshot: false, // Inmutable
+  finalSnapshotIdentifier: 'diablo-reimbursement-bot-final-snapshot', // Inmutable
+  tags: TAGS,
+});
 
 // Deploy an ECS service on Fargate to host the application container
 const service = new awsx.ecs.FargateService('service', {
@@ -126,10 +126,10 @@ const service = new awsx.ecs.FargateService('service', {
       environment: [
         { name: 'OPENAI_API_KEY', value: OPENAI_API_KEY },
         { name: 'TELEGRAM_BOT_TOKEN', value: TELEGRAM_BOT_TOKEN },
-        // {
-        //   name: 'DATABASE_URL',
-        //   value: pulumi.interpolate`postgresql://${DB_USERNAME}:${DB_PASSWORD}@${db.endpoint}:${db.port}/${db.databaseName}`,
-        // },
+        {
+          name: 'DATABASE_URL',
+          value: pulumi.interpolate`postgresql://${DB_USERNAME}:${DB_PASSWORD}@${db.endpoint}:${db.port}/${db.databaseName}`,
+        },
       ],
     },
   },
