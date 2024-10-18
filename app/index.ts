@@ -10,6 +10,63 @@ app.use(express.json());
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
+const extractInvoiceFieldsFromImage = async ({
+  base64Image,
+}: {
+  base64Image: string;
+}) => {
+  const openAIResponse = await axios.post(
+    'https://api.openai.com/v1/chat/completions',
+    {
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are an AI specialized in accounting and extracting data from invoices. You are exceptionally good at recognizing image-based data and providing structured information from accounting documents.',
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Please analyze the attached invoice image and extract the following details in a structured JSON format:
+              \`\`\`json
+              {
+                "transactionDate": "YYYY-MM-DD",
+                "amount": 1234.56,
+                "description": "Dinner at McDonald's"
+              }
+              \`\`\`
+      where
+      \`transactionDate\`: is the exact date of the transaction in the format of YYYY-MM-DD.
+      \`amount\`: is the final amount of the transaction, including any tip or additional charges formatted as money with commas as the thousands separator and dots for decimals. Make sure is the total. The total is normally the highest amount in the invoice.
+      \`description\`: is a one line description of the invoice. Ideally include the name of the establishment and the type of expense: eg dinner at mcdonalds, drinks at irish pub`,
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:image/jpeg;base64,${base64Image}`,
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 300,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+
+  const fieldsResponse = openAIResponse.data.choices[0].message.content;
+
+  return { fieldsResponse };
+};
+
 type ITelegramWebhookSchema = {
   message: {
     chat: {
@@ -46,46 +103,9 @@ app.post(`/telegram-webhook`, async (req, res) => {
       const base64Image = Buffer.from(mediaResponse.data).toString('base64');
 
       // Send the image to OpenAI Vision API to extract details
-      const openAIResponse = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
-        {
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content:
-                'You are an AI specialized in accounting and extracting data from invoices. You are exceptionally good at recognizing image-based data and providing structured information from accounting documents.',
-            },
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'text',
-                  text: `Please analyze the attached invoice image and extract the following details in a structured format:
-      1. The exact date of the transaction in the format of YYYY-MM-DD.
-      2. The final amount of the transaction, including any tip or additional charges formatted as money with commas as the thousands separator and dots for decimals. Make sure is the total. The total is normally the highest amount in the invoice.
-      3. A one line description of the invoice. Ideally include the name of the establishment and the type of expense: eg dinner at mcdonalds, drinks at irish pub`,
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:image/jpeg;base64,${base64Image}`,
-                  },
-                },
-              ],
-            },
-          ],
-          max_tokens: 300,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const fieldsResponse = openAIResponse.data.choices[0].message.content;
+      const { fieldsResponse } = await extractInvoiceFieldsFromImage({
+        base64Image,
+      });
 
       const response = await axios.post(
         `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
