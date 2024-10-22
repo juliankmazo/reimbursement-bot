@@ -47,6 +47,7 @@ const image = new awsx.ecr.Image('image', {
 // Create a new VPC to get subnet IDs
 const vpc = new awsx.ec2.Vpc('diabloReimbursementBotVpc', {
   cidrBlock: '10.0.0.0/16',
+  // cidrBlock: '0.0.0.0/0',
   tags: TAGS,
 });
 
@@ -54,7 +55,7 @@ const vpc = new awsx.ec2.Vpc('diabloReimbursementBotVpc', {
 const dbSubnetGroup = new aws.rds.SubnetGroup(
   'diablo_reimbursement_bot_db_subnet_group',
   {
-    subnetIds: vpc.privateSubnetIds,
+    subnetIds: vpc.publicSubnetIds,
     tags: TAGS,
   }
 );
