@@ -1,6 +1,5 @@
 import express from 'express';
 import axios from 'axios';
-import { JWT } from 'google-auth-library';
 import { google } from 'googleapis';
 
 const app = express();
@@ -18,15 +17,22 @@ const SCOPES = [
 const GOOGLE_APPLICATION_CREDENTIALS = './google-key.json';
 
 const uploadMediaToGoogleDrive = async ({
-  auth,
   receiptFileUrl,
   fileName,
 }: {
-  auth: JWT;
   receiptFileUrl: string;
   fileName?: string;
 }) => {
-  const drive = google.drive({ version: 'v3', auth });
+  const GOOGLE_DRIVE_PARENT_FOLDER_ID = '1UM0eF0yB4EOPEVfZ0Ye7uyo0wQJe_9Yz';
+
+  const drive = google.drive({
+    version: 'v3',
+    auth: new google.auth.GoogleAuth({
+      keyFile: GOOGLE_APPLICATION_CREDENTIALS,
+      scopes: SCOPES,
+    }),
+  });
+
   const media = {
     mimeType: 'image/jpeg',
     body: (await axios.get(receiptFileUrl, { responseType: 'stream' })).data,
@@ -35,7 +41,7 @@ const uploadMediaToGoogleDrive = async ({
   try {
     const uploadedFile = await drive.files.create({
       requestBody: {
-        parents: ['1UM0eF0yB4EOPEVfZ0Ye7uyo0wQJe_9Yz'],
+        parents: [GOOGLE_DRIVE_PARENT_FOLDER_ID],
         name: fileName,
       },
       media: media,
@@ -75,52 +81,52 @@ const sendToGoogleSheet = async (parsedFieldsResponse: {
   const range = 'Form Responses 1'; // Update this to the desired range
 
   try {
-    const auth = new JWT({
-      keyFile: GOOGLE_APPLICATION_CREDENTIALS,
-      scopes: SCOPES,
-    });
-
     const { fileUrl } = await uploadMediaToGoogleDrive({
-      auth,
       receiptFileUrl: parsedFieldsResponse.receiptFileUrl,
       fileName: parsedFieldsResponse.description,
     });
 
     const fieldsToSend = [
-      'Timestamp',
-      'Name',
-      'Email',
-      'Item Description',
-      'Date of the Transaction',
-      'Date received (Reimbursement requested)',
-      'Amount in USD (convert to USD for other currencies)',
-      'PDF/Copy of Receipt or invoice',
+      'createdAt',
+      'name',
+      'email',
+      'itemDescription',
+      'transactedAt',
+      'dateReceived',
+      'amountInUSD',
+      'receiptFileUrl',
     ];
 
     const valuesToSend = fieldsToSend.map((field) => {
       switch (field) {
-        case 'Timestamp':
+        case 'createdAt':
           return new Date().toISOString();
-        case 'Name':
+        case 'name':
           return 'Julian';
-        case 'Email':
+        case 'email':
           return 'julian@snappr.com';
-        case 'Item Description':
+        case 'itemDescription':
           return parsedFieldsResponse.description;
-        case 'Date of the Transaction':
+        case 'transactedAt':
           return parsedFieldsResponse.transactionDate;
-        case 'Date received (Reimbursement requested)':
+        case 'dateReceived':
           return '2024-10-21';
-        case 'Amount in USD (convert to USD for other currencies)':
+        case 'amountInUSD':
           return parsedFieldsResponse.amountInUSD;
-        case 'PDF/Copy of Receipt or invoice':
+        case 'receiptFileUrl':
           return fileUrl;
         default:
           return '';
       }
     });
 
-    const sheets = google.sheets({ version: 'v4', auth });
+    const sheets = google.sheets({
+      version: 'v4',
+      auth: new google.auth.GoogleAuth({
+        keyFile: GOOGLE_APPLICATION_CREDENTIALS,
+        scopes: SCOPES,
+      }),
+    });
 
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId,
