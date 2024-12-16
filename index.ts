@@ -47,6 +47,7 @@ const image = new awsx.ecr.Image('image', {
 // Create a new VPC to get subnet IDs
 const vpc = new awsx.ec2.Vpc('diabloReimbursementBotVpc', {
   cidrBlock: '10.0.0.0/16',
+  // cidrBlock: '0.0.0.0/0',
   tags: TAGS,
 });
 
@@ -54,7 +55,7 @@ const vpc = new awsx.ec2.Vpc('diabloReimbursementBotVpc', {
 const dbSubnetGroup = new aws.rds.SubnetGroup(
   'diablo_reimbursement_bot_db_subnet_group',
   {
-    subnetIds: vpc.privateSubnetIds,
+    subnetIds: vpc.publicSubnetIds,
     tags: TAGS,
   }
 );
@@ -195,26 +196,26 @@ const distribution = new aws.cloudfront.Distribution(
 
 // Export the HTTPS URL of the CloudFront distribution
 export const url = pulumi.interpolate`https://${distribution.domainName}`;
-// export const dbEndpoint = pulumi.interpolate`${db.endpoint}`;
+export const dbEndpoint = pulumi.interpolate`${db.endpoint}`;
 
 // After creating the distribution, set the Telegram webhook
 
-pulumi
-  .all([distribution.domainName, TELEGRAM_BOT_TOKEN])
-  .apply(([domainName, botToken]) => {
-    const telegramWebhookUrl = `https://${domainName}/webhook`;
+// pulumi
+//   .all([distribution.domainName, TELEGRAM_BOT_TOKEN])
+//   .apply(([domainName, botToken]) => {
+//     const telegramWebhookUrl = `https://${domainName}/webhook`;
 
-    axios
-      .post(`https://api.telegram.org/bot${botToken}/setWebhook`, {
-        url: telegramWebhookUrl,
-      })
-      .then((response) => {
-        console.log('Telegram webhook set successfully:', response.data);
-      })
-      .catch((error) => {
-        console.error(
-          'Error setting Telegram webhook:',
-          error.response ? error.response.data : error.message
-        );
-      });
-  });
+//     axios
+//       .post(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+//         url: telegramWebhookUrl,
+//       })
+//       .then((response) => {
+//         console.log('Telegram webhook set successfully:', response.data);
+//       })
+//       .catch((error) => {
+//         console.error(
+//           'Error setting Telegram webhook:',
+//           error.response ? error.response.data : error.message
+//         );
+//       });
+//   });
