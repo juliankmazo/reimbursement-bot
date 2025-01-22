@@ -240,7 +240,7 @@ const distribution = new aws.cloudfront.Distribution(
 
 // Export the HTTPS URL of the CloudFront distribution
 export const url = pulumi.interpolate`https://${distribution.domainName}`;
-export const dbEndpoint = pulumi.interpolate`${db.endpoint}`;
+// export const dbEndpoint = pulumi.interpolate`${db.endpoint}`;
 
 // After creating the distribution, set the Telegram webhook
 
