@@ -2,6 +2,9 @@
 /bin/
 /node_modules/
 app/node_modules/
+google-key.json
+.env
+
 
 
 

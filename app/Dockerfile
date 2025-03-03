@@ -13,4 +13,6 @@ RUN pnpm build
 
 EXPOSE 80
 
+ENV NODE_OPTIONS=--openssl-legacy-provider
+
 CMD ["node", "dist/index.js"]

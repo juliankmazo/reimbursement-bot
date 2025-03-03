@@ -1,3 +1,13 @@
+process.env.NODE_OPTIONS = '--openssl-legacy-provider';
+
+import crypto from 'crypto';
+
+try {
+  crypto.setFips(false);
+} catch (e) {
+  console.warn('Failed to set FIPS mode:', e);
+}
+
 import express from 'express';
 import axios from 'axios';
 import { google } from 'googleapis';
@@ -14,7 +24,29 @@ const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive',
 ];
-const GOOGLE_APPLICATION_CREDENTIALS = './google-key.json';
+// const GOOGLE_APPLICATION_CREDENTIALS = './google-key.json';
+
+const GOOGLE_KEY_CREDENTIALS =
+  process.env.GOOGLE_KEY != null
+    ? (() => {
+        const credentials = JSON.parse(process.env.GOOGLE_KEY);
+        // Fix the private key format by replacing double-escaped newlines with actual newlines
+        if (credentials.private_key) {
+          credentials.private_key = credentials.private_key
+            .replace(/\\n/g, '\n')
+            .replace(/\\\\/g, '\\');
+        }
+        return credentials;
+      })()
+    : (() => {
+        throw new Error('GOOGLE_KEY is not set');
+      })();
+
+// For debugging
+console.log(
+  'Private key format:',
+  GOOGLE_KEY_CREDENTIALS.private_key.slice(0, 50) + '...'
+);
 
 const uploadMediaToGoogleDrive = async ({
   receiptFileUrl,
@@ -28,7 +60,8 @@ const uploadMediaToGoogleDrive = async ({
   const drive = google.drive({
     version: 'v3',
     auth: new google.auth.GoogleAuth({
-      keyFile: GOOGLE_APPLICATION_CREDENTIALS,
+      // keyFile: GOOGLE_APPLICATION_CREDENTIALS,
+      credentials: GOOGLE_KEY_CREDENTIALS,
       scopes: SCOPES,
     }),
   });
@@ -110,7 +143,7 @@ const sendToGoogleSheet = async (parsedFieldsResponse: {
         case 'transactedAt':
           return parsedFieldsResponse.transactionDate;
         case 'dateReceived':
-          return '2024-10-21';
+          return new Date().toISOString().split('T')[0]; // Returns YYYY-MM-DD format
         case 'amountInUSD':
           return parsedFieldsResponse.amountInUSD;
         case 'receiptFileUrl':
@@ -123,7 +156,8 @@ const sendToGoogleSheet = async (parsedFieldsResponse: {
     const sheets = google.sheets({
       version: 'v4',
       auth: new google.auth.GoogleAuth({
-        keyFile: GOOGLE_APPLICATION_CREDENTIALS,
+        // keyFile: GOOGLE_APPLICATION_CREDENTIALS,
+        credentials: GOOGLE_KEY_CREDENTIALS,
         scopes: SCOPES,
       }),
     });
@@ -248,7 +282,7 @@ const extractInvoiceFieldsFromImage = async ({
     },
     {
       headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${process.env.OPEN_AI_API_KEY}`,
         'Content-Type': 'application/json',
       },
     }
